@@ -257,114 +257,21 @@
             background: #b0b0b0;
         }
 
-        /* Mobile Toggle Button */
-        .mobile-toggle {
-            display: none;
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            background: #2a2a2a;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-            z-index: 100;
-            transition: all 0.2s;
-        }
-
-        .mobile-toggle:hover {
-            background: #1a1a1a;
-            transform: scale(1.05);
-        }
-
-        .mobile-back {
-            display: none;
-            padding: 12px 20px;
-            background: #2a2a2a;
-            color: white;
-            border: none;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            width: 100%;
-            text-align: left;
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
-            .container {
-                position: relative;
-            }
-
             .sidebar {
                 width: 100%;
-                position: fixed;
-                top: 0;
-                left: 0;
-                z-index: 1000;
-                height: 100vh;
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
+                position: absolute;
+                z-index: 10;
+                display: none;
             }
 
             .sidebar.mobile-open {
-                transform: translateX(0);
+                display: flex;
             }
 
             .pdf-viewer {
                 width: 100%;
-                height: 100vh;
-            }
-
-            .mobile-toggle {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-
-            .mobile-back {
-                display: block;
-            }
-
-            .pdf-header {
-                padding: 16px 20px;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-
-            .pdf-title {
-                font-size: 16px;
-            }
-
-            .pdf-actions {
-                flex-direction: row;
-                gap: 8px;
-                width: 100%;
-                overflow-x: auto;
-            }
-
-            .btn {
-                flex: 1;
-                min-width: fit-content;
-                justify-content: center;
-                padding: 10px 12px;
-                font-size: 12px;
-                white-space: nowrap;
-            }
-
-            .pdf-content {
-                padding: 16px;
-            }
-
-            /* Hide PDF viewer when sidebar is open on mobile */
-            .sidebar.mobile-open ~ .pdf-viewer {
-                display: none;
             }
         }
     </style>
@@ -372,8 +279,7 @@
 <body>
     <div class="container">
         <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <button class="mobile-back" id="mobileBack" onclick="closeSidebar()">← Back to Recipe</button>
+        <div class="sidebar">
             <div class="header">
                 <h1>Rosie's Available Recipes</h1>
                 <div class="search-container">
@@ -397,9 +303,6 @@
             <div class="pdf-header" id="pdfHeader" style="display: none;">
                 <div class="pdf-title" id="pdfTitle"></div>
                 <div class="pdf-actions">
-                    <button id="copyText" class="btn" onclick="copyPdfText()">
-                        📋 Copy Text
-                    </button>
                     <a href="#" id="viewOriginal" class="btn" target="_blank" rel="noopener">
                         View Original
                     </a>
@@ -418,9 +321,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Mobile Toggle Button -->
-    <button class="mobile-toggle" id="mobileToggle" onclick="toggleSidebar()">📋</button>
 
     <script>
         let recipes = [];
@@ -483,23 +383,6 @@
             document.getElementById('downloadPdf').href = selectedRecipe.pdf;
             document.getElementById('downloadPdf').download = 
                 `${selectedRecipe.number.toString().padStart(3, '0')}_${selectedRecipe.title.replace(/\s+/g, '_')}.pdf`;
-
-            // Close sidebar on mobile after selection
-            if (window.innerWidth <= 768) {
-                closeSidebar();
-            }
-        }
-
-        // Toggle sidebar for mobile
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('mobile-open');
-        }
-
-        // Close sidebar for mobile
-        function closeSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.remove('mobile-open');
         }
 
         // Search functionality
@@ -525,69 +408,6 @@
                 countElement.textContent = `${total} recipes`;
             } else {
                 countElement.textContent = `${count} of ${total} recipes`;
-            }
-        }
-
-        // Copy PDF text
-        async function copyPdfText() {
-            if (!selectedRecipe) return;
-            
-            const btn = document.getElementById('copyText');
-            const originalText = btn.innerHTML;
-            
-            try {
-                btn.innerHTML = '⏳ Loading...';
-                btn.disabled = true;
-                
-                // Load PDF.js library
-                if (typeof pdfjsLib === 'undefined') {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-                    document.head.appendChild(script);
-                    
-                    await new Promise((resolve, reject) => {
-                        script.onload = resolve;
-                        script.onerror = reject;
-                    });
-                    
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                }
-                
-                // Load PDF
-                const loadingTask = pdfjsLib.getDocument(selectedRecipe.pdf);
-                const pdf = await loadingTask.promise;
-                
-                let fullText = '';
-                
-                // Extract text from all pages
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + '\n\n';
-                }
-                
-                // Copy to clipboard
-                await navigator.clipboard.writeText(fullText.trim());
-                
-                btn.innerHTML = '✓ Copied!';
-                btn.style.background = '#2a2a2a';
-                btn.style.color = 'white';
-                
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.style.background = '';
-                    btn.style.color = '';
-                    btn.disabled = false;
-                }, 2000);
-                
-            } catch (err) {
-                console.error('Failed to copy PDF text:', err);
-                btn.innerHTML = '✗ Failed';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 2000);
             }
         }
 
