@@ -7,6 +7,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PDF.js Library (Essential for mobile scrolling) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Initialize the PDF worker immediately
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -215,30 +223,34 @@
             border-color: #e0e0e0;
         }
 
-        .btn-disabled-text {
-            font-size: 10px;
-            color: #8a8a8a;
-            margin-left: 4px;
-        }
-
         .pdf-content {
             flex: 1;
             padding: 32px;
             overflow: auto;
             -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .pdf-frame {
+        /* Replaces the Iframe styling */
+        .pdf-canvas-container {
             width: 100%;
             height: 100%;
-            border: none;
-            border-radius: 8px;
-            background: white;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* smooth scrolling iOS */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 40px;
         }
 
-        .pdf-frame.mobile {
-            border-radius: 0;
+        .pdf-page-canvas {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: white;
         }
 
         .empty-state {
@@ -248,6 +260,7 @@
             justify-content: center;
             height: 100%;
             color: #6a6a6a;
+            width: 100%;
         }
 
         .empty-state-icon {
@@ -269,21 +282,20 @@
         }
 
         /* Scrollbar styling */
-        .recipe-list::-webkit-scrollbar {
+        .recipe-list::-webkit-scrollbar,
+        .pdf-canvas-container::-webkit-scrollbar {
             width: 8px;
         }
 
-        .recipe-list::-webkit-scrollbar-track {
+        .recipe-list::-webkit-scrollbar-track,
+        .pdf-canvas-container::-webkit-scrollbar-track {
             background: transparent;
         }
 
-        .recipe-list::-webkit-scrollbar-thumb {
+        .recipe-list::-webkit-scrollbar-thumb,
+        .pdf-canvas-container::-webkit-scrollbar-thumb {
             background: #d0d0d0;
             border-radius: 4px;
-        }
-
-        .recipe-list::-webkit-scrollbar-thumb:hover {
-            background: #b0b0b0;
         }
 
         /* Mobile Toggle Button */
@@ -322,6 +334,12 @@
             cursor: pointer;
             width: 100%;
             text-align: left;
+        }
+
+        .loading-indicator {
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
         }
 
         /* Responsive */
@@ -406,16 +424,16 @@
                 flex: 1;
                 overflow: hidden;
                 position: relative;
+                background: #e8e8e8;
             }
             
-            .pdf-frame {
-                border-radius: 0;
-                box-shadow: none;
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
+            .pdf-canvas-container {
+                padding: 16px 0;
+            }
+            
+            .pdf-page-canvas {
+                width: 95%; /* Small margin on mobile */
+                margin-bottom: 8px;
             }
 
             /* Hide PDF viewer when sidebar is open on mobile */
@@ -473,7 +491,10 @@
                     <div class="empty-state-icon">📖</div>
                     <div class="empty-state-text">Select a recipe to view</div>
                 </div>
-                <iframe id="pdfFrame" class="pdf-frame" style="display: none;"></iframe>
+                
+                <!-- NEW PDF CONTAINER (Replaces iframe) -->
+                <div id="pdfCanvasContainer" class="pdf-canvas-container" style="display: none;">
+                </div>
             </div>
         </div>
     </div>
@@ -518,42 +539,78 @@
             `).join('');
         }
 
-        // Select recipe
-        function selectRecipe(recipeNumber) {
+        // Select recipe - UPDATED
+        async function selectRecipe(recipeNumber) {
             selectedRecipe = recipes.find(r => r.number === recipeNumber);
-            
             if (!selectedRecipe) return;
 
-            // Update active state
+            // 1. Close sidebar IMMEDIATELY on mobile so we see the loading screen
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+
+            // Update active state in the list
             document.querySelectorAll('.recipe-item').forEach(item => {
                 item.classList.remove('active');
             });
             document.querySelector(`[data-id="${recipeNumber}"]`)?.classList.add('active');
 
-            // Show PDF viewer
+            // UI Updates
             document.getElementById('emptyState').style.display = 'none';
             document.getElementById('pdfHeader').style.display = 'flex';
-            document.getElementById('pdfFrame').style.display = 'block';
-
-            // Update PDF viewer
             document.getElementById('pdfTitle').textContent = selectedRecipe.title;
             
-            // Use FitV (fit vertical/width) for better scrolling on mobile
-            // Or use zoom=page-width for Chrome PDF viewer
-            const isMobile = window.innerWidth <= 768;
-            const pdfUrl = isMobile 
-                ? selectedRecipe.pdf + '#view=FitV&scrollbar=1&toolbar=0&navpanes=0'
-                : selectedRecipe.pdf + '#view=FitH';
-            document.getElementById('pdfFrame').src = pdfUrl;
-            
+            // Link Updates
             document.getElementById('viewOriginal').href = selectedRecipe.url;
             document.getElementById('downloadPdf').href = selectedRecipe.pdf;
             document.getElementById('downloadPdf').download = 
                 `${selectedRecipe.number.toString().padStart(3, '0')}_${selectedRecipe.title.replace(/\s+/g, '_')}.pdf`;
 
-            // Close sidebar on mobile after selection
-            if (window.innerWidth <= 768) {
-                closeSidebar();
+            // RENDER PDF USING CANVAS
+            const container = document.getElementById('pdfCanvasContainer');
+            container.style.display = 'flex';
+            container.innerHTML = '<div class="loading-indicator">⏳ Loading PDF pages...</div>';
+            container.scrollTop = 0; // Reset scroll to top
+
+            try {
+                const loadingTask = pdfjsLib.getDocument(selectedRecipe.pdf);
+                const pdf = await loadingTask.promise;
+                
+                container.innerHTML = ''; // Clear loading text
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    
+                    const unscaledViewport = page.getViewport({ scale: 1 });
+                    const containerWidth = container.clientWidth > 0 ? container.clientWidth : window.innerWidth;
+                    const desiredWidth = containerWidth - (window.innerWidth <= 768 ? 20 : 60); 
+                    const scale = desiredWidth / unscaledViewport.width;
+                    
+                    const viewport = page.getViewport({ scale: scale });
+
+                    const canvas = document.createElement('canvas');
+                    canvas.className = 'pdf-page-canvas';
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    container.appendChild(canvas);
+
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    await page.render(renderContext).promise;
+                }
+
+            } catch (error) {
+                console.error('Error rendering PDF:', error);
+                container.innerHTML = `
+                    <div class="no-results">
+                        <p>Could not render PDF preview.</p>
+                        <br>
+                        <a href="${selectedRecipe.pdf}" class="btn btn-primary" download>Download PDF</a>
+                    </div>`;
             }
         }
 
@@ -572,12 +629,10 @@
         // Search functionality
         document.getElementById('searchInput').addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
-            
             filteredRecipes = recipes.filter(recipe => 
                 recipe.title.toLowerCase().includes(searchTerm) ||
                 recipe.number.toString().includes(searchTerm)
             );
-            
             renderRecipeList();
             updateRecipeCount();
         });
@@ -587,7 +642,6 @@
             const count = filteredRecipes.length;
             const total = recipes.length;
             const countElement = document.getElementById('recipeCount');
-            
             if (count === total) {
                 countElement.textContent = `${total} recipes`;
             } else {
@@ -595,7 +649,7 @@
             }
         }
 
-        // Copy PDF text
+        // Copy PDF text (Updated to use globally loaded lib)
         async function copyPdfText() {
             if (!selectedRecipe) return;
             
@@ -606,21 +660,7 @@
                 btn.innerHTML = '⏳ Loading...';
                 btn.disabled = true;
                 
-                // Load PDF.js library
-                if (typeof pdfjsLib === 'undefined') {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-                    document.head.appendChild(script);
-                    
-                    await new Promise((resolve, reject) => {
-                        script.onload = resolve;
-                        script.onerror = reject;
-                    });
-                    
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                }
-                
-                // Load PDF
+                // Load PDF (uses global library now)
                 const loadingTask = pdfjsLib.getDocument(selectedRecipe.pdf);
                 const pdf = await loadingTask.promise;
                 
@@ -634,7 +674,6 @@
                     fullText += pageText + '\n\n';
                 }
                 
-                // Copy to clipboard
                 await navigator.clipboard.writeText(fullText.trim());
                 
                 btn.innerHTML = '✓ Copied!';
@@ -661,14 +700,12 @@
         // Initialize
         loadRecipes();
 
-        // Fix viewport height on mobile (for iOS and Android)
+        // Fix viewport height on mobile
         function setViewportHeight() {
-            // Get actual viewport height
             const vh = window.innerHeight * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
         }
 
-        // Set on load and resize
         setViewportHeight();
         window.addEventListener('resize', setViewportHeight);
         window.addEventListener('orientationchange', setViewportHeight);
