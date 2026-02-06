@@ -1,0 +1,9 @@
+{
+  "name": "recipe-collection",
+  "version": "1.0.0",
+  "description": "Personal recipe collection from Recipe by Rosie",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build needed - static site'"
+  }
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "number": 1,
+    "title": "Banoffee Cupcakes",
+    "pdf": "public/recipes/001_Banoffee_Cupcakes.pdf",
+    "url": "https://www.recipebyrosie.com/post/banoffee-cupcakes",
+    "instagram": ""
+  },
+  {
+    "number": 2,
+    "title": "Red Velvet Mocha Cake",
+    "pdf": "public/recipes/002_Red_Velvet_Mocha_Cake.pdf",
+    "url": "https://www.recipebyrosie.com/post/red-velvet-mocha-cake",
+    "instagram": ""
+  }
+]
