@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Recipe Collection</title>
+    <title>Rosie's Available Recipes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,414 +15,403 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #fafafa;
-            color: #333;
+            font-family: 'Montserrat', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #f5f5f5;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            display: flex;
+            height: 100vh;
         }
 
-        header {
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
             background: white;
-            padding: 30px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
         }
 
-        h1 {
-            text-align: center;
-            color: #d4497d;
-            font-size: 2.5em;
-            margin-bottom: 20px;
+        .header {
+            padding: 24px;
+            border-bottom: 1px solid #e0e0e0;
+            background: white;
         }
 
-        .search-box {
-            max-width: 600px;
-            margin: 0 auto;
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+
+        .search-container {
             position: relative;
         }
 
-        #search {
+        .search-input {
             width: 100%;
-            padding: 15px 20px;
-            font-size: 16px;
-            border: 2px solid #ddd;
-            border-radius: 25px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        #search:focus {
-            border-color: #d4497d;
-        }
-
-        .recipe-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-
-        .recipe-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .recipe-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .recipe-number {
-            color: #999;
-            font-size: 0.9em;
-            margin-bottom: 8px;
-        }
-
-        .recipe-title {
-            font-size: 1.3em;
-            color: #333;
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
-        .recipe-links {
-            display: flex;
-            gap: 10px;
-            margin-top: 12px;
-        }
-
-        .recipe-links a {
-            color: #d4497d;
-            text-decoration: none;
-            font-size: 0.9em;
-            padding: 8px 12px;
-            border: 1px solid #d4497d;
-            border-radius: 6px;
+            padding: 12px 16px;
+            padding-left: 40px;
+            border: 1px solid #d0d0d0;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
             transition: all 0.2s;
         }
 
-        .recipe-links a:hover {
-            background: #d4497d;
+        .search-input:focus {
+            outline: none;
+            border-color: #4a4a4a;
+            box-shadow: 0 0 0 3px rgba(74, 74, 74, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6a6a6a;
+            font-size: 16px;
+        }
+
+        .recipe-count {
+            font-size: 13px;
+            color: #6a6a6a;
+            margin-top: 12px;
+        }
+
+        /* Recipe List */
+        .recipe-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .recipe-item {
+            padding: 14px 16px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+        }
+
+        .recipe-item:hover {
+            background: #f8f8f8;
+            border-color: #e0e0e0;
+        }
+
+        .recipe-item.active {
+            background: #2a2a2a;
+            color: white;
+            border-color: #2a2a2a;
+        }
+
+        .recipe-item.active .recipe-number {
+            color: #b0b0b0;
+        }
+
+        .recipe-item.active .recipe-title {
             color: white;
         }
 
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 1000;
+        .recipe-number {
+            font-size: 11px;
+            font-weight: 500;
+            color: #8a8a8a;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
         }
 
-        .modal-content {
-            position: relative;
-            background: white;
-            width: 95%;
-            height: 95%;
-            margin: 2.5% auto;
-            border-radius: 12px;
+        .recipe-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2a2a2a;
+            line-height: 1.4;
+        }
+
+        /* PDF Viewer */
+        .pdf-viewer {
+            flex: 1;
+            background: #e8e8e8;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid #ddd;
+        .pdf-header {
+            background: white;
+            padding: 20px 32px;
+            border-bottom: 1px solid #e0e0e0;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .modal-title {
-            font-size: 1.5em;
-            color: #333;
+        .pdf-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
         }
 
-        .modal-buttons {
+        .pdf-actions {
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         .btn {
             padding: 10px 20px;
-            border: none;
+            border: 1px solid #d0d0d0;
+            background: white;
             border-radius: 6px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
-            font-size: 14px;
             transition: all 0.2s;
+            text-decoration: none;
+            color: #2a2a2a;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: #f5f5f5;
+            border-color: #b0b0b0;
         }
 
         .btn-primary {
-            background: #d4497d;
+            background: #2a2a2a;
             color: white;
+            border-color: #2a2a2a;
         }
 
         .btn-primary:hover {
-            background: #b83a68;
+            background: #1a1a1a;
+            border-color: #1a1a1a;
         }
 
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .close {
-            background: none;
-            border: none;
-            font-size: 30px;
-            cursor: pointer;
-            color: #999;
-            padding: 0;
-            width: 40px;
-            height: 40px;
-        }
-
-        .close:hover {
-            color: #333;
-        }
-
-        .modal-body {
+        .pdf-content {
             flex: 1;
-            padding: 20px;
-            overflow: hidden;
+            padding: 32px;
+            overflow: auto;
         }
 
-        #pdf-viewer {
+        .pdf-frame {
             width: 100%;
             height: 100%;
             border: none;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6a6a6a;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            font-weight: 500;
         }
 
         .no-results {
+            padding: 32px;
             text-align: center;
-            padding: 60px 20px;
-            color: #999;
-            font-size: 1.2em;
+            color: #6a6a6a;
+            font-size: 14px;
         }
 
-        .stats {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1em;
+        /* Scrollbar styling */
+        .recipe-list::-webkit-scrollbar {
+            width: 8px;
         }
 
-        .copy-notification {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #4caf50;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            display: none;
-            animation: slideIn 0.3s;
+        .recipe-list::-webkit-scrollbar-track {
+            background: transparent;
         }
 
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
+        .recipe-list::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 4px;
+        }
+
+        .recipe-list::-webkit-scrollbar-thumb:hover {
+            background: #b0b0b0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: absolute;
+                z-index: 10;
+                display: none;
             }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #999;
+            .sidebar.mobile-open {
+                display: flex;
+            }
+
+            .pdf-viewer {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <h1>🍰 My Recipe Collection</h1>
-            <div class="search-box">
-                <input 
-                    type="text" 
-                    id="search" 
-                    placeholder="Search recipes..."
-                    autocomplete="off"
-                >
-            </div>
-        </div>
-    </header>
-
     <div class="container">
-        <div class="stats" id="stats">Loading recipes...</div>
-        <div class="recipe-grid" id="recipe-grid"></div>
-        <div class="no-results" id="no-results" style="display: none;">
-            No recipes found matching your search.
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="header">
+                <h1>Rosie's Available Recipes</h1>
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        id="searchInput"
+                        placeholder="Search recipes..."
+                        autocomplete="off"
+                    >
+                </div>
+                <div class="recipe-count" id="recipeCount"></div>
+            </div>
+            
+            <div class="recipe-list" id="recipeList"></div>
+        </div>
+
+        <!-- PDF Viewer -->
+        <div class="pdf-viewer">
+            <div class="pdf-header" id="pdfHeader" style="display: none;">
+                <div class="pdf-title" id="pdfTitle"></div>
+                <div class="pdf-actions">
+                    <a href="#" id="viewOriginal" class="btn" target="_blank" rel="noopener">
+                        View Original
+                    </a>
+                    <a href="#" id="downloadPdf" class="btn btn-primary" download>
+                        Download PDF
+                    </a>
+                </div>
+            </div>
+            
+            <div class="pdf-content">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">📖</div>
+                    <div class="empty-state-text">Select a recipe to view</div>
+                </div>
+                <iframe id="pdfFrame" class="pdf-frame" style="display: none;"></iframe>
+            </div>
         </div>
     </div>
 
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-title" id="modal-title"></div>
-                </div>
-                <div class="modal-buttons">
-                    <button class="btn btn-primary" id="copy-btn">📋 Copy Text</button>
-                    <a class="btn btn-secondary" id="rosie-link" target="_blank">🔗 Original Recipe</a>
-                    <button class="close" id="close-modal">&times;</button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <iframe id="pdf-viewer"></iframe>
-            </div>
-        </div>
-    </div>
-
-    <div class="copy-notification" id="copy-notification">
-        ✓ Text copied to clipboard!
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
-        // Recipe data - will be loaded from recipes.json
         let recipes = [];
-        let currentPdf = null;
+        let filteredRecipes = [];
+        let selectedRecipe = null;
 
-        // Load recipes data
+        // Load recipes
         async function loadRecipes() {
             try {
                 const response = await fetch('recipes.json');
                 recipes = await response.json();
-                displayRecipes(recipes);
-                updateStats();
+                filteredRecipes = [...recipes];
+                renderRecipeList();
+                updateRecipeCount();
             } catch (error) {
                 console.error('Error loading recipes:', error);
-                document.getElementById('stats').textContent = 'Error loading recipes';
+                document.getElementById('recipeList').innerHTML = 
+                    '<div class="no-results">Error loading recipes</div>';
             }
         }
 
-        function displayRecipes(recipesToShow) {
-            const grid = document.getElementById('recipe-grid');
-            const noResults = document.getElementById('no-results');
+        // Render recipe list
+        function renderRecipeList() {
+            const listElement = document.getElementById('recipeList');
             
-            if (recipesToShow.length === 0) {
-                grid.style.display = 'none';
-                noResults.style.display = 'block';
+            if (filteredRecipes.length === 0) {
+                listElement.innerHTML = '<div class="no-results">No recipes found</div>';
                 return;
             }
 
-            grid.style.display = 'grid';
-            noResults.style.display = 'none';
-            
-            grid.innerHTML = recipesToShow.map(recipe => `
-                <div class="recipe-card" onclick="openRecipe(${recipe.number})">
-                    <div class="recipe-number">#${recipe.number}</div>
+            listElement.innerHTML = filteredRecipes.map(recipe => `
+                <div class="recipe-item" data-id="${recipe.number}" onclick="selectRecipe(${recipe.number})">
+                    <div class="recipe-number">#${recipe.number.toString().padStart(3, '0')}</div>
                     <div class="recipe-title">${recipe.title}</div>
-                    <div class="recipe-links" onclick="event.stopPropagation()">
-                        <a href="${recipe.url}" target="_blank">Rosie's Site</a>
-                        ${recipe.instagram ? `<a href="${recipe.instagram}" target="_blank">Instagram</a>` : ''}
-                    </div>
                 </div>
             `).join('');
         }
 
-        function updateStats() {
-            document.getElementById('stats').textContent = 
-                `${recipes.length} recipes in collection`;
-        }
+        // Select recipe
+        function selectRecipe(recipeNumber) {
+            selectedRecipe = recipes.find(r => r.number === recipeNumber);
+            
+            if (!selectedRecipe) return;
 
-        function openRecipe(number) {
-            const recipe = recipes.find(r => r.number === number);
-            if (!recipe) return;
+            // Update active state
+            document.querySelectorAll('.recipe-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-id="${recipeNumber}"]`)?.classList.add('active');
 
-            currentPdf = recipe.pdf;
-            document.getElementById('modal-title').textContent = recipe.title;
-            document.getElementById('pdf-viewer').src = recipe.pdf;
-            document.getElementById('rosie-link').href = recipe.url;
-            document.getElementById('modal').style.display = 'block';
-        }
+            // Show PDF viewer
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('pdfHeader').style.display = 'flex';
+            document.getElementById('pdfFrame').style.display = 'block';
 
-        async function copyPdfText() {
-            if (!currentPdf) return;
-
-            try {
-                const loadingTask = pdfjsLib.getDocument(currentPdf);
-                const pdf = await loadingTask.promise;
-                let fullText = '';
-
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + '\n\n';
-                }
-
-                await navigator.clipboard.writeText(fullText);
-                showCopyNotification();
-            } catch (error) {
-                console.error('Error copying text:', error);
-                alert('Could not copy text from PDF');
-            }
-        }
-
-        function showCopyNotification() {
-            const notification = document.getElementById('copy-notification');
-            notification.style.display = 'block';
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 2000);
-        }
-
-        function closeModal() {
-            document.getElementById('modal').style.display = 'none';
-            document.getElementById('pdf-viewer').src = '';
-            currentPdf = null;
+            // Update PDF viewer
+            document.getElementById('pdfTitle').textContent = selectedRecipe.title;
+            document.getElementById('pdfFrame').src = selectedRecipe.pdf;
+            document.getElementById('viewOriginal').href = selectedRecipe.url;
+            document.getElementById('downloadPdf').href = selectedRecipe.pdf;
+            document.getElementById('downloadPdf').download = 
+                `${selectedRecipe.number.toString().padStart(3, '0')}_${selectedRecipe.title.replace(/\s+/g, '_')}.pdf`;
         }
 
         // Search functionality
-        document.getElementById('search').addEventListener('input', (e) => {
+        document.getElementById('searchInput').addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
-            const filtered = recipes.filter(recipe => 
-                recipe.title.toLowerCase().includes(searchTerm)
+            
+            filteredRecipes = recipes.filter(recipe => 
+                recipe.title.toLowerCase().includes(searchTerm) ||
+                recipe.number.toString().includes(searchTerm)
             );
-            displayRecipes(filtered);
+            
+            renderRecipeList();
+            updateRecipeCount();
         });
 
-        // Event listeners
-        document.getElementById('close-modal').addEventListener('click', closeModal);
-        document.getElementById('copy-btn').addEventListener('click', copyPdfText);
-        
-        // Close modal on background click
-        document.getElementById('modal').addEventListener('click', (e) => {
-            if (e.target.id === 'modal') closeModal();
-        });
-
-        // Close modal on Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
-        });
+        // Update recipe count
+        function updateRecipeCount() {
+            const count = filteredRecipes.length;
+            const total = recipes.length;
+            const countElement = document.getElementById('recipeCount');
+            
+            if (count === total) {
+                countElement.textContent = `${total} recipes`;
+            } else {
+                countElement.textContent = `${count} of ${total} recipes`;
+            }
+        }
 
         // Initialize
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        
         loadRecipes();
     </script>
 </body>
