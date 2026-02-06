@@ -21,6 +21,11 @@
             background: #f5f5f5;
         }
 
+        /* CSS custom property for real viewport height */
+        :root {
+            --vh: 1vh;
+        }
+
         .container {
             display: flex;
             height: 100vh;
@@ -197,19 +202,43 @@
             border-color: #1a1a1a;
         }
 
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f5f5f5;
+            color: #8a8a8a;
+            border-color: #e0e0e0;
+        }
+
+        .btn:disabled:hover {
+            background: #f5f5f5;
+            border-color: #e0e0e0;
+        }
+
+        .btn-disabled-text {
+            font-size: 10px;
+            color: #8a8a8a;
+            margin-left: 4px;
+        }
+
         .pdf-content {
             flex: 1;
             padding: 32px;
             overflow: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .pdf-frame {
             width: 100%;
-            height: 100%;
+            height: 150vh;
             border: none;
             border-radius: 8px;
             background: white;
             box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .pdf-frame.mobile {
+            border-radius: 0;
         }
 
         .empty-state {
@@ -297,8 +326,14 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            body {
+                height: calc(var(--vh, 1vh) * 100);
+                overflow: hidden;
+            }
+
             .container {
                 position: relative;
+                height: calc(var(--vh, 1vh) * 100);
             }
 
             .sidebar {
@@ -307,7 +342,7 @@
                 top: 0;
                 left: 0;
                 z-index: 1000;
-                height: 100vh;
+                height: calc(var(--vh, 1vh) * 100);
                 transform: translateX(-100%);
                 transition: transform 0.3s ease;
             }
@@ -318,7 +353,10 @@
 
             .pdf-viewer {
                 width: 100%;
-                height: 100vh;
+                height: calc(var(--vh, 1vh) * 100);
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
             }
 
             .mobile-toggle {
@@ -332,25 +370,52 @@
             }
 
             .pdf-header {
-                padding: 16px 20px;
+                padding: 12px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: white;
+                flex-shrink: 0;
             }
 
             .pdf-title {
-                font-size: 16px;
+                font-size: 14px;
+                line-height: 1.3;
             }
 
             .pdf-actions {
-                flex-direction: column;
-                gap: 8px;
+                flex-direction: row;
+                gap: 6px;
+                width: 100%;
+                flex-wrap: nowrap;
             }
 
             .btn {
-                width: 100%;
+                flex: 1;
                 justify-content: center;
+                padding: 8px 4px;
+                font-size: 10px;
+                white-space: nowrap;
             }
 
             .pdf-content {
-                padding: 16px;
+                padding: 0;
+                flex: 1;
+                overflow: hidden;
+                position: relative;
+            }
+            
+            .pdf-frame {
+                border-radius: 0;
+                box-shadow: none;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
             }
 
             /* Hide PDF viewer when sidebar is open on mobile */
@@ -388,14 +453,17 @@
             <div class="pdf-header" id="pdfHeader" style="display: none;">
                 <div class="pdf-title" id="pdfTitle"></div>
                 <div class="pdf-actions">
-                    <button id="copyUrl" class="btn" onclick="copyRecipeUrl()">
-                        📋 Copy URL
+                    <button id="copyText" class="btn" onclick="copyPdfText()">
+                        📋 Copy
+                    </button>
+                    <button class="btn" disabled title="Coming Soon">
+                        IG
                     </button>
                     <a href="#" id="viewOriginal" class="btn" target="_blank" rel="noopener">
-                        View Original
+                        Original
                     </a>
                     <a href="#" id="downloadPdf" class="btn btn-primary" download>
-                        Download PDF
+                        Download
                     </a>
                 </div>
             </div>
@@ -469,7 +537,15 @@
 
             // Update PDF viewer
             document.getElementById('pdfTitle').textContent = selectedRecipe.title;
-            document.getElementById('pdfFrame').src = selectedRecipe.pdf;
+            
+            // Use FitV (fit vertical/width) for better scrolling on mobile
+            // Or use zoom=page-width for Chrome PDF viewer
+            const isMobile = window.innerWidth <= 768;
+            const pdfUrl = isMobile 
+                ? selectedRecipe.pdf + '#view=FitV&scrollbar=1&toolbar=0&navpanes=0'
+                : selectedRecipe.pdf + '#view=FitH';
+            document.getElementById('pdfFrame').src = pdfUrl;
+            
             document.getElementById('viewOriginal').href = selectedRecipe.url;
             document.getElementById('downloadPdf').href = selectedRecipe.pdf;
             document.getElementById('downloadPdf').download = 
@@ -519,14 +595,48 @@
             }
         }
 
-        // Copy recipe URL
-        function copyRecipeUrl() {
+        // Copy PDF text
+        async function copyPdfText() {
             if (!selectedRecipe) return;
             
-            const url = selectedRecipe.url;
-            navigator.clipboard.writeText(url).then(() => {
-                const btn = document.getElementById('copyUrl');
-                const originalText = btn.innerHTML;
+            const btn = document.getElementById('copyText');
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.innerHTML = '⏳ Loading...';
+                btn.disabled = true;
+                
+                // Load PDF.js library
+                if (typeof pdfjsLib === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                    document.head.appendChild(script);
+                    
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = reject;
+                    });
+                    
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                
+                // Load PDF
+                const loadingTask = pdfjsLib.getDocument(selectedRecipe.pdf);
+                const pdf = await loadingTask.promise;
+                
+                let fullText = '';
+                
+                // Extract text from all pages
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n\n';
+                }
+                
+                // Copy to clipboard
+                await navigator.clipboard.writeText(fullText.trim());
+                
                 btn.innerHTML = '✓ Copied!';
                 btn.style.background = '#2a2a2a';
                 btn.style.color = 'white';
@@ -535,15 +645,38 @@
                     btn.innerHTML = originalText;
                     btn.style.background = '';
                     btn.style.color = '';
+                    btn.disabled = false;
                 }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy URL');
-            });
+                
+            } catch (err) {
+                console.error('Failed to copy PDF text:', err);
+                btn.innerHTML = '✗ Failed';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            }
         }
 
         // Initialize
         loadRecipes();
+
+        // Fix viewport height on mobile (for iOS and Android)
+        function setViewportHeight() {
+            // Get actual viewport height
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+
+        // Set on load and resize
+        setViewportHeight();
+        window.addEventListener('resize', setViewportHeight);
+        window.addEventListener('orientationchange', setViewportHeight);
+
+        // Show sidebar by default on mobile
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.add('mobile-open');
+        }
     </script>
 </body>
 </html>
